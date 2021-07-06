@@ -1,1 +1,3 @@
-# dixiong777-COH_SF_IRTML
+# Children_Oral_Health_Short_Form_IRTML
+
+This repository contains R and Mplus code for short form development using item response theory and machine learnings in Xiong D, Marcus M, Maida CA, Lyu Y, Hays RD, Wang Y, Shen J, Spolsky VW, Lee SY, Crall JJ, Liu H. Development of short forms for children's dental caries and urgent treatment needs using item response theory and machine learning methods: a secondary analysis.
