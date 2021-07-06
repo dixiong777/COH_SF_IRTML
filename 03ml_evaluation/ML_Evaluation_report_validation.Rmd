@@ -1,0 +1,117 @@
+---
+title: "ML_Evaluation_validation"
+output: html_notebook
+---
+
+## Load the workspace
+```{r}
+# Clean
+rm(list = ls())
+
+# library
+require(readxl)
+library(caret)
+# Catboost information
+# devtools::install_url('https://github.com/catboost/catboost/releases/download/v0.24.4/catboost-R-Darwin-0.24.4.tgz',
+#                       INSTALL_opts = c("--no-multiarch"))
+library(catboost)
+library(randomForest)
+library(arm)
+library(KernelKnn)
+library(readxl)
+library(SuperLearner)
+library(klaR)
+
+library(nnet)
+```
+
+
+## Load functions for evaluation
+```{r}
+## Get results
+source('external_partition_ML.R')
+source('get_result.R')
+```
+
+## Get the data prepared.
+Out of 497 samples, 24.3% of them had at least one tooth with active cavity (DT > 0) and 42.3% of them needed care within 2 weeks (RFUTN = 1). 
+```{r}
+# import data
+# The id orders are the same per checked by matching their outcome 'E_D'.
+P_refer <- as.data.frame(read_excel("ML_Data.xlsx", sheet = 'P_refer'))
+C_refer <- as.data.frame(read_excel("ML_Data.xlsx", sheet = 'C_refer'))
+P_D <- as.data.frame(read_excel("ML_Data.xlsx", sheet = 'P_D'))
+C_D <- as.data.frame(read_excel("ML_Data.xlsx", sheet = 'C_D'))
+C_ALL <- as.data.frame(read_excel('ML_Data.xlsx', sheet = 'child_all'))
+P_ALL <- as.data.frame(read_excel('ML_Data.xlsx', sheet = 'parent_all'))
+# Overall Outcome
+# AC: 24.3%
+# RFUTN: 42.3%
+prop.table(table(P_refer$E_D > 0))
+prop.table(table(P_refer$E_referral %in% c("See a dentist immediately", 
+                                           "See a dentist within the next 2 weeks")))
+```
+
+## Implementation
+```{r, warning=FALSE}
+source('All_models.R') # demo and without demo.
+
+# Add previous toolkits Paper 10 and the MARS analysis
+# source('All_models_v2.R')
+
+# All variables avaliable
+source('All_models_Full.R')
+
+# Methods
+source('CatBoost_performance.R')
+source('RF_performance.R')
+source('KNN_performance.R')
+source('SVMRad_performance.R')
+source('GLM_performance.R')
+source('NB_performance.R')
+source('NN_performance.R')
+
+# Parameters
+seed = c(738292, 453453, 92837458, 6564535, 3253253)
+is_adjustment = c(FALSE, TRUE)
+
+model_function_collection = list(GLM_performance,
+                                 KNN_performance,
+                                 SVMRad_performance,
+                                 NB_performance,
+                                 NN_performance,
+                                 CatBoost_performance,
+                                 RF_performance)
+model_name_collection = list('GLM',
+                             'KNN',
+                             'SVMRad',
+                             'NB',
+                             "NN",
+                             'CatBoost', 
+                             'RF')
+N = length(model_function_collection)
+for (p in 1:2) {
+  for (rep in 1:5) {
+  res_tab <- list()
+  res_tab_full <- list()
+for(i in 1:N){
+res_tab[[i]] <- All_Models(C_D, P_D, C_refer, P_refer,
+                               model_function_collection[[i]],
+                               model_name_collection[[i]],
+                               n_fold, seed[rep],
+                               imbalance_adjustment = is_adjustment[p])
+  
+  # res_tab_full[[i]] <- All_Models_Full(C_ALL, P_ALL,
+  #                                model_function_collection[[i]],
+  #                                model_name_collection[[i]],
+  #                                n_fold, seed[rep],
+  #                                imbalance_adjustment = is_adjustment[p])
+}
+
+final_result <- do.call(rbind, res_tab)
+# final_result_full <- do.call(rbind, res_tab_full)
+write.csv(final_result, paste0('ML_all_methods_models_resample_', is_adjustment[p], seed[rep], '.csv'))
+# write.csv(final_result_full, paste0('ML_all_methods_models_full_resample_', is_adjustment[p], seed[rep], '.csv'))
+}
+}
+```
